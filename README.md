@@ -1,51 +1,57 @@
-🚀 60 Days DSA Challenge – Striver's SDE Sheet
+🧠 60 Days DSA Challenge – Striver's SDE Sheet
 
-Welcome to my 60 Days DSA Challenge repository! 🎯
-This repository contains my daily solutions to problems from Striver's SDE Sheet, implemented in Java.
+📌 Repository: Daily solutions to problems from Striver’s SDE Sheet implemented in Java.
+This challenge is my way to stay consistent, improve DSA skills, and prepare for coding interviews.
 
-The goal of this challenge is to improve problem-solving skills, strengthen core DSA concepts, and stay consistent with coding practice.
+🖼️ Structure
 
-📅 Challenge Structure
-
-I am following Striver's SDE Sheet (60 Days Plan).
-
-Each day has its own package named as:
+Each day has its own package, where I’ll upload solutions for that day.
 
 day1/
+   ├── Problem1.java
+   ├── Problem2.java
 day2/
-day3/
+   ├── Problem1.java
+   ├── Problem2.java
 ...
 
+✨ Features
 
-Inside each package, I will upload my Java solutions to that day’s problems.
+📅 Daily Solutions for 60 Days
 
-Example:
+☕ Implemented in Java
 
-day1/
-   ├── Problem1.java
-   ├── Problem2.java
-day2/
-   ├── Problem1.java
-   ├── Problem2.java
+📦 Organized into day-wise packages
 
-🛠️ Tech Stack
+🧠 Covers all major DSA & Problem-Solving Patterns
 
-Language: Java ☕
+🎯 Helps in coding interview preparation
 
-IDE: IntelliJ IDEA / Eclipse
+📁 Folder Structure
+.
+├── day1
+│   ├── Problem1.java
+│   ├── Problem2.java
+├── day2
+│   ├── Problem1.java
+│   ├── Problem2.java
+├── ...
+├── README.md
+└── .gitignore
 
-Version Control: Git & GitHub
+🛠️ Technologies Used
+Tech	Purpose
+Java	Language for solving problems
+Git & GitHub	Version control & repository hosting
+IntelliJ IDEA / Eclipse	IDE for coding & testing
+🚧 Progress Tracker
 
-🎯 Goals of the Challenge
+I’ll be updating my progress here 👇
 
-✅ Strengthen problem-solving skills
-
-✅ Learn patterns in Data Structures & Algorithms
-
-✅ Stay consistent with daily practice
-
-✅ Prepare effectively for coding interviews
-
+Day	Status	Problems Covered
+Day 1	✅ Completed	Arrays basics
+Day 2	⬜ Pending	TBD
+...	...	...
 📌 Resources
 
 Striver’s SDE Sheet
@@ -54,10 +60,18 @@ LeetCode
 
 GeeksforGeeks
 
-🌟 Connect with Me
+🤝 Contribution
 
-LinkedIn: Sakshi Singh
+This is a personal learning project, but if you’re also following Striver’s sheet, feel free to fork and add your solutions too!
 
-GitHub: Sakshi-Singh
+📬 Contact
 
-⭐ If you find this helpful, don’t forget to star this repository!
+If you’d like to connect:
+
+🌐 My LinkedIn
+
+📧 Email: sakshi.singh171101@gmail.com
+
+🪄 Inspiration
+
+Inspired by Striver’s 60 Days SDE Challenge and my own determination to stay consistent, code daily, and grow stronger in DSA.
