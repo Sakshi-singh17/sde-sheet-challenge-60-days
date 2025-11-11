@@ -1,31 +1,27 @@
 name: Daily LeetCode Auto Push
 
+permissions:
+  contents: write
+
 on:
   schedule:
-    - cron: '0 18 * * *'  # 18:00 UTC = 23:30 IST daily
-  workflow_dispatch:      # allow manual trigger
-
-permissions:
-    contents: write
-
+    - cron: "00 18 * * *"   # Runs daily at 11:30 PM IST
+  workflow_dispatch:
 
 jobs:
-  daily_upload:
+  auto-update:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0         # full history (safe)
-          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.11"
 
-      - name: Install requests
+      - name: Install dependencies
         run: |
           pip install requests
 
@@ -33,64 +29,73 @@ jobs:
         env:
           LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
         run: |
-          python - <<'PY'
-          import os, requests, json
-          from pathlib import Path
+          python <<'EOF'
+          import os
+          import requests
 
-          # CONFIG
-          USERNAME = "Sakshi_Singh17"
-          CODE_DIR = Path("src")
-          LIMIT = 10    # how many recent submissions to check
-
+          username = "Sakshi_Singh17"
           cookie = os.getenv("LEETCODE_SESSION")
-          if not cookie:
-              raise SystemExit("LEETCODE_SESSION secret is missing")
-
           headers = {
               "cookie": f"LEETCODE_SESSION={cookie}",
               "referer": "https://leetcode.com",
               "User-Agent": "Mozilla/5.0"
           }
 
-          # call LeetCode submissions API
-          url = f"https://leetcode.com/api/submissions/?offset=0&limit={LIMIT}"
-          r = requests.get(url, headers=headers)
-          r.raise_for_status()
-          data = r.json()
+          # Fetch latest 10 submissions
+          url = "https://leetcode.com/api/submissions/?offset=0&limit=10"
+          response = requests.get(url, headers=headers)
+          data = response.json()
 
-          CODE_DIR.mkdir(parents=True, exist_ok=True)
-          existing_days = sorted([d.name for d in CODE_DIR.iterdir() if d.is_dir() and d.name.startswith("day")],
-                                 key=lambda x: int(x[3:]) if x[3:].isdigit() else 0)
+          base_dir = "src"
+          os.makedirs(base_dir, exist_ok=True)
+
+          # Find next day folder
+          existing_days = [d for d in os.listdir(base_dir) if d.startswith("day")]
           if existing_days:
-              last_num = int(existing_days[-1][3:]) if existing_days[-1][3:].isdigit() else 0
-              next_day = f"day{last_num+1}"
+              nums = [int(d[3:]) for d in existing_days if d[3:].isdigit()]
+              next_day = f"day{max(nums) + 1}"
           else:
               next_day = "day1"
 
-          day_path = CODE_DIR / next_day
-          day_path.mkdir(parents=True, exist_ok=True)
+          day_path = os.path.join(base_dir, next_day)
+          os.makedirs(day_path, exist_ok=True)
 
-          saved = 0
+          # Collect existing problem filenames
+          existing_files = []
+          for d in existing_days:
+              folder = os.path.join(base_dir, d)
+              for f in os.listdir(folder):
+                  if f.endswith(".java"):
+                      existing_files.append(f)
+
+          added = 0
           for sub in data.get("submissions_dump", []):
-              # fields observed: status_display, lang, title_slug, code
-              if sub.get("status_display") == "Accepted" and sub.get("lang", "").lower() == "java":
-                  title = sub.get("title_slug") or sub.get("title", "problem")
-                  filename = title.replace("-", "_") + ".java"
-                  code_text = sub.get("code") or ""
-                  if code_text:
-                      filepath = day_path / filename
-                      # avoid overwriting existing file with same name
-                      if not filepath.exists():
-                          filepath.write_text(code_text, encoding="utf-8")
-                          saved += 1
+              if sub["status_display"] == "Accepted" and sub["lang"] == "java":
+                  filename = sub["title_slug"].replace("-", "_") + ".java"
+                  if filename in existing_files:
+                      continue  # Skip duplicates
+                  code = sub["code"]
+                  with open(os.path.join(day_path, filename), "w", encoding="utf-8") as f:
+                      f.write(code)
+                  added += 1
 
-          print(f"Saved {saved} files to {day_path}")
-          PY
+          if added == 0:
+              print("✅ No new problems found today. Skipping commit.")
+              with open("skip_commit.txt", "w") as f:
+                  f.write("skip")
+          else:
+              print(f"✅ Added {added} new problems to {day_path}")
+          EOF
 
-      - name: Commit and Push
+      - name: Commit & push changes
         run: |
-          git config user.name "Sakshi Singh"
-          git config user.email "sakshi@example.com"    # change if you want your real email
-          git add src || true
-          git commit -m "Auto upload LeetCode solutions – $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
+          if [ -f "skip_commit.txt" ]; then
+            echo "No new problems. Skipping push."
+            exit 0
+          fi
+
+          git config --global user.email "sakshisingh@example.com"
+          git config --global user.name "Sakshi Singh"
+          git add .
+          git commit -m "Auto upload LeetCode solutions – $(date -u)"
           git push
