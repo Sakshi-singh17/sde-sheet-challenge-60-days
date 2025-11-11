@@ -1,0 +1,68 @@
+name: Daily LeetCode Auto Push
+
+on:
+  schedule:
+    - cron: '0 18 * * *'  # runs daily at 11:30 PM IST (18:00 UTC)
+  workflow_dispatch:      # allows manual trigger from Actions UI
+
+jobs:
+  daily_upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install requests leetcode-api
+
+      - name: Fetch latest LeetCode solutions
+        env:
+          LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
+        run: |
+          python <<'EOF'
+          import os
+          from leetcode_api import LeetCode
+
+          username = "Sakshi_Singh17"
+          client = LeetCode(cookie=os.getenv("LEETCODE_SESSION"))
+
+          submissions = client.get_recent_submission_list(username=username, limit=5)
+          code_dir = "src"
+          os.makedirs(code_dir, exist_ok=True)
+
+          existing = [d for d in os.listdir(code_dir) if d.startswith("day")]
+          if existing:
+              nums = [int(d[3:]) for d in existing if d[3:].isdigit()]
+              next_day = f"day{max(nums)+1}"
+          else:
+              next_day = "day1"
+
+          day_path = os.path.join(code_dir, next_day)
+          os.makedirs(day_path, exist_ok=True)
+
+          for sub in submissions:
+              if sub.get('statusDisplay') == 'Accepted' and sub.get('lang') == 'java':
+                  q_title = sub['titleSlug']
+                  filename = q_title.replace("-", "_") + ".java"
+                  code_detail = client.get_submission_detail(sub['id'])
+                  code = code_detail.get('code', '')
+                  with open(os.path.join(day_path, filename), "w", encoding="utf-8") as f:
+                      f.write(code)
+
+          print(f"✅ Solutions saved to {day_path}")
+          EOF
+
+      - name: Commit and Push
+        run: |
+          git config user.name "Sakshi Singh"
+          git config user.email "sakshi@example.com"
+          git add .
+          git commit -m "Auto upload LeetCode solutions – $(date)" || echo "No changes to commit"
+          git push
