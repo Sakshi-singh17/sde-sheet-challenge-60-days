@@ -5,6 +5,10 @@ on:
     - cron: '0 18 * * *'  # 18:00 UTC = 23:30 IST daily
   workflow_dispatch:      # allow manual trigger
 
+  permissions:
+    contents: write
+
+
 jobs:
   daily_upload:
     runs-on: ubuntu-latest
