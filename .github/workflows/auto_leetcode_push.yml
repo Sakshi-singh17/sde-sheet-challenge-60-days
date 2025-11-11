@@ -2,67 +2,91 @@ name: Daily LeetCode Auto Push
 
 on:
   schedule:
-    - cron: '0 18 * * *'  # runs daily at 11:30 PM IST (18:00 UTC)
-  workflow_dispatch:      # allows manual trigger from Actions UI
+    - cron: '0 18 * * *'  # 18:00 UTC = 23:30 IST daily
+  workflow_dispatch:      # allow manual trigger
 
 jobs:
   daily_upload:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0         # full history (safe)
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
+      - name: Install requests
         run: |
-          pip install requests leetcode-api
+          pip install requests
 
       - name: Fetch latest LeetCode solutions
         env:
           LEETCODE_SESSION: ${{ secrets.LEETCODE_SESSION }}
         run: |
-          python <<'EOF'
-          import os
-          from leetcode_api import LeetCode
+          python - <<'PY'
+          import os, requests, json
+          from pathlib import Path
 
-          username = "Sakshi_Singh17"
-          client = LeetCode(cookie=os.getenv("LEETCODE_SESSION"))
+          # CONFIG
+          USERNAME = "Sakshi_Singh17"
+          CODE_DIR = Path("src")
+          LIMIT = 10    # how many recent submissions to check
 
-          submissions = client.get_recent_submission_list(username=username, limit=5)
-          code_dir = "src"
-          os.makedirs(code_dir, exist_ok=True)
+          cookie = os.getenv("LEETCODE_SESSION")
+          if not cookie:
+              raise SystemExit("LEETCODE_SESSION secret is missing")
 
-          existing = [d for d in os.listdir(code_dir) if d.startswith("day")]
-          if existing:
-              nums = [int(d[3:]) for d in existing if d[3:].isdigit()]
-              next_day = f"day{max(nums)+1}"
+          headers = {
+              "cookie": f"LEETCODE_SESSION={cookie}",
+              "referer": "https://leetcode.com",
+              "User-Agent": "Mozilla/5.0"
+          }
+
+          # call LeetCode submissions API
+          url = f"https://leetcode.com/api/submissions/?offset=0&limit={LIMIT}"
+          r = requests.get(url, headers=headers)
+          r.raise_for_status()
+          data = r.json()
+
+          CODE_DIR.mkdir(parents=True, exist_ok=True)
+          existing_days = sorted([d.name for d in CODE_DIR.iterdir() if d.is_dir() and d.name.startswith("day")],
+                                 key=lambda x: int(x[3:]) if x[3:].isdigit() else 0)
+          if existing_days:
+              last_num = int(existing_days[-1][3:]) if existing_days[-1][3:].isdigit() else 0
+              next_day = f"day{last_num+1}"
           else:
               next_day = "day1"
 
-          day_path = os.path.join(code_dir, next_day)
-          os.makedirs(day_path, exist_ok=True)
+          day_path = CODE_DIR / next_day
+          day_path.mkdir(parents=True, exist_ok=True)
 
-          for sub in submissions:
-              if sub.get('statusDisplay') == 'Accepted' and sub.get('lang') == 'java':
-                  q_title = sub['titleSlug']
-                  filename = q_title.replace("-", "_") + ".java"
-                  code_detail = client.get_submission_detail(sub['id'])
-                  code = code_detail.get('code', '')
-                  with open(os.path.join(day_path, filename), "w", encoding="utf-8") as f:
-                      f.write(code)
+          saved = 0
+          for sub in data.get("submissions_dump", []):
+              # fields observed: status_display, lang, title_slug, code
+              if sub.get("status_display") == "Accepted" and sub.get("lang", "").lower() == "java":
+                  title = sub.get("title_slug") or sub.get("title", "problem")
+                  filename = title.replace("-", "_") + ".java"
+                  code_text = sub.get("code") or ""
+                  if code_text:
+                      filepath = day_path / filename
+                      # avoid overwriting existing file with same name
+                      if not filepath.exists():
+                          filepath.write_text(code_text, encoding="utf-8")
+                          saved += 1
 
-          print(f"✅ Solutions saved to {day_path}")
-          EOF
+          print(f"Saved {saved} files to {day_path}")
+          PY
 
       - name: Commit and Push
         run: |
           git config user.name "Sakshi Singh"
-          git config user.email "sakshi@example.com"
-          git add .
-          git commit -m "Auto upload LeetCode solutions – $(date)" || echo "No changes to commit"
+          git config user.email "sakshi@example.com"    # change if you want your real email
+          git add src || true
+          git commit -m "Auto upload LeetCode solutions – $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes to commit"
           git push
