@@ -5,7 +5,7 @@ on:
     - cron: '0 18 * * *'  # 18:00 UTC = 23:30 IST daily
   workflow_dispatch:      # allow manual trigger
 
-  permissions:
+permissions:
     contents: write
 
 
