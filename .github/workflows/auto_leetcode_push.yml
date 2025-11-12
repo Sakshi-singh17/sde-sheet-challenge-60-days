@@ -32,6 +32,7 @@ jobs:
           python <<'EOF'
           import os
           import requests
+          from datetime import datetime
 
           username = "Sakshi_Singh17"
           cookie = os.getenv("LEETCODE_SESSION")
@@ -41,42 +42,69 @@ jobs:
               "User-Agent": "Mozilla/5.0"
           }
 
-          # Fetch latest 10 submissions
-          url = "https://leetcode.com/api/submissions/?offset=0&limit=10"
+          url = "https://leetcode.com/api/submissions/?offset=0&limit=20"
           response = requests.get(url, headers=headers)
           data = response.json()
 
           base_dir = "src"
           os.makedirs(base_dir, exist_ok=True)
 
-          # Find next day folder
+          # --- Determine current day folder based on date ---
+          today = datetime.now().strftime("%Y-%m-%d")
+
+          # Find latest existing folder (like day1, day2...) or create day1 if none exist
           existing_days = [d for d in os.listdir(base_dir) if d.startswith("day")]
           if existing_days:
               nums = [int(d[3:]) for d in existing_days if d[3:].isdigit()]
-              next_day = f"day{max(nums) + 1}"
-          else:
-              next_day = "day1"
+              latest_day = max(nums)
+              latest_folder = f"day{latest_day}"
 
-          day_path = os.path.join(base_dir, next_day)
+              # Check if latest folder corresponds to today's date
+              date_file = os.path.join(base_dir, latest_folder, "date.txt")
+              if os.path.exists(date_file):
+                  with open(date_file, "r") as f:
+                      folder_date = f.read().strip()
+              else:
+                  folder_date = None
+
+              if folder_date == today:
+                  day_folder = latest_folder
+              else:
+                  day_folder = f"day{latest_day + 1}"
+          else:
+              day_folder = "day1"
+
+          day_path = os.path.join(base_dir, day_folder)
           os.makedirs(day_path, exist_ok=True)
 
-          # Collect existing problem filenames
-          existing_files = []
-          for d in existing_days:
-              folder = os.path.join(base_dir, d)
-              for f in os.listdir(folder):
-                  if f.endswith(".java"):
-                      existing_files.append(f)
+          # Save today's date for reference
+          with open(os.path.join(day_path, "date.txt"), "w") as f:
+              f.write(today)
+
+          # --- Collect existing problem filenames ---
+          existing_files = {}
+          for f in os.listdir(day_path):
+              if f.endswith(".java"):
+                  base = f[:-5]  # remove .java
+                  existing_files.setdefault(base.split("_v")[0], []).append(f)
 
           added = 0
           for sub in data.get("submissions_dump", []):
               if sub["status_display"] == "Accepted" and sub["lang"] == "java":
-                  filename = sub["title_slug"].replace("-", "_") + ".java"
-                  if filename in existing_files:
-                      continue  # Skip duplicates
+                  base_name = sub["title_slug"].replace("-", "_")
+          
+                  # Handle multiple versions for same problem
+                  if base_name in existing_files:
+                      version = len(existing_files[base_name]) + 1
+                      filename = f"{base_name}_v{version}.java"
+                  else:
+                      filename = f"{base_name}_v1.java"
+
                   code = sub["code"]
                   with open(os.path.join(day_path, filename), "w", encoding="utf-8") as f:
                       f.write(code)
+
+                  existing_files.setdefault(base_name, []).append(filename)
                   added += 1
 
           if added == 0:
@@ -84,7 +112,7 @@ jobs:
               with open("skip_commit.txt", "w") as f:
                   f.write("skip")
           else:
-              print(f"✅ Added {added} new problems to {day_path}")
+              print(f"✅ Added {added} new solutions to {day_path}")
           EOF
 
       - name: Commit & push changes
